@@ -77,46 +77,6 @@ class CycleGAN(BaseModel):
             self.netS_B = networks.define_G(opt.input_nc, opt.seg_nc, opt.ngf, netG=stype, norm=opt.norm,
                                         use_dropout=not opt.no_dropout, init_type=opt.init_type,
                                         init_gain=opt.init_gain, gpu_ids=opt.gpu_ids, return_feature=opt.fid, spade=False, is_seg=True)
-            #self.tmpS_A = networks.define_G(opt.input_nc, opt.seg_nc, opt.ngf, netG=stype, norm=opt.norm,
-            #                            use_dropout=not opt.no_dropout, init_type=opt.init_type,
-            #                            init_gain=opt.init_gain, gpu_ids=opt.gpu_ids, return_feature=opt.fid, spade=False, is_seg=True)
-            #self.tmpS_B = networks.define_G(opt.input_nc, opt.seg_nc, opt.ngf, netG=stype, norm=opt.norm,
-            #                            use_dropout=not opt.no_dropout, init_type=opt.init_type,
-            #                            init_gain=opt.init_gain, gpu_ids=opt.gpu_ids, return_feature=opt.fid, spade=False, is_seg=True)
-            '''
-            state_dict = torch.load('../ckpts7/seg_unet_0701/bestnet_S_B.pth', map_location=str(self.device))
-            self.netS_B.load_state_dict(state_dict)
-            state_dict = torch.load('../ckpts7/seg_unet_0701/bestnet_S_A.pth', map_location=str(self.device))
-            self.netS_A.load_state_dict(state_dict)        
-            '''
-
-
-
-            '''
-            state_dict = torch.load('../ckpts7/seg_ms_128ce_0108/bestnet_S_B.pth', map_location=str(self.device))
-            self.netS_B.load_state_dict(state_dict)
-            state_dict = torch.load('../ckpts7/seg_ms_128ce_0108/bestnet_S_A.pth', map_location=str(self.device))
-            self.netS_A.load_state_dict(state_dict)  
-            '''
-
-            #state_dict = torch.load('../ckpts/seg_msseg_aug/latestnet_S_B.pth', map_location=str(self.device))
-            #self.netS_B.load_state_dict(state_dict)
-            #state_dict = torch.load('../ckpts/seg_msseg_aug/latestnet_S_A.pth', map_location=str(self.device))
-            #self.netS_A.load_state_dict(state_dict)
-
-            '''
-            state_dict = torch.load('../ckpts/seg_ixi/latestnet_S_B.pth', map_location=str(self.device))
-            self.netS_B.load_state_dict(state_dict)
-            state_dict = torch.load('../ckpts/seg_ixi/latestnet_S_A.pth', map_location=str(self.device))
-            self.netS_A.load_state_dict(state_dict)    
-'''
-
-
-            #state_dict = torch.load('../ckpts/seg_retouch_sp/epoch960.pth', map_location=str(self.device))
-            #self.netS_B.load_state_dict(state_dict)
-            #state_dict = torch.load('../ckpts/seg_retouch_ci/epoch980.pth', map_location=str(self.device))
-            #self.netS_A.load_state_dict(state_dict)
-
 
         if self.isTrain:  # define discriminators
             self.multiD = False
@@ -126,26 +86,7 @@ class CycleGAN(BaseModel):
             self.netD_B = networks.define_D(opt.input_nc, opt.ndf, opt.netD,
                                             n_layer=opt.n_layers_D, norm=opt.norm, init_type=opt.init_type,
                                             init_gain=opt.init_gain, gpu_ids=opt.gpu_ids)
-            if opt.multiscaleD > 1:
-                self.multiD = True
-                self.model_names.append('D_A_pixel')
-                self.model_names.append('D_B_pixel')
-                self.model_names.append('D_A_34')
-                self.model_names.append('D_B_34')
-                self.netD_A_34 = networks.define_D(opt.output_nc, opt.ndf, opt.netD,
-                                                n_layer=2, norm=opt.norm, init_type=opt.init_type,
-                                                init_gain=opt.init_gain, gpu_ids=opt.gpu_ids)
-                self.netD_B_34 = networks.define_D(opt.input_nc, opt.ndf, opt.netD,
-                                                n_layer=2, norm=opt.norm, init_type=opt.init_type,
-                                                init_gain=opt.init_gain, gpu_ids=opt.gpu_ids)
-                self.netD_A_pixel = networks.define_D(opt.output_nc, opt.ndf, 'pixel',
-                                                  norm=opt.norm, init_type=opt.init_type,
-                                                  init_gain=opt.init_gain, gpu_ids=opt.gpu_ids)
-                self.netD_B_pixel = networks.define_D(opt.input_nc, opt.ndf, 'pixel',
-                                                  norm=opt.norm, init_type=opt.init_type,
-                                                  init_gain=opt.init_gain, gpu_ids=opt.gpu_ids)
 
-        if self.isTrain:
             if opt.lambda_identity > 0.0:  # only works when input and output images have the same number of channels
                 assert(opt.input_nc == opt.output_nc)
             # define loss functions
@@ -157,18 +98,12 @@ class CycleGAN(BaseModel):
                 if opt.dataset == 'retouch' or opt.dataset=='msseg': bg_lambda = 0.7
                 neg_w, pos_w = 0.2, 0.8
                 self.criterionSeg = nn.CrossEntropyLoss(weight=torch.tensor([neg_w, pos_w]).cuda())
-                #self.criterionSeg = networks.cross_entropy #networks2d.SegLoss(weight=bg_lambda)#networks.cross_entropy#networks.SegLoss(bg_lambda, opt.prob_seg).to(self.device)
             # initialize optimizers; schedulers will be automatically created by function <BaseModel.setup>.
 
             if self.learn_seg:
                 self.optimizer_G = torch.optim.Adam(itertools.chain(self.netG_A.parameters(), self.netG_B.parameters(),
                                                                       self.netS_A.parameters(), self.netS_B.parameters()),
                                                        lr=opt.lr_g, betas=(opt.beta1, 0.999))
-                #self.optimizer_G_B = torch.optim.Adam(itertools.chain(self.netG_A.parameters(), self.netG_B.parameters(),#,
-                #                                                      self.netS_B.parameters()),
-                #                                       lr=opt.lr_g, betas=(opt.beta1, 0.999))
-                #self.optimizers.append(self.optimizer_G_B)
-
             else:
                 self.optimizer_G = torch.optim.Adam(itertools.chain(self.netG_A.parameters(), self.netG_B.parameters()),
                                                     lr=opt.lr_g, betas=(opt.beta1, 0.999))
@@ -176,13 +111,6 @@ class CycleGAN(BaseModel):
 
 
             self.optimizer_D = torch.optim.Adam(itertools.chain(self.netD_A.parameters(), self.netD_B.parameters()), lr=opt.lr_d, betas=(opt.beta1, 0.999))
-            if self.multiD:
-                self.optimizer_D = torch.optim.Adam(itertools.chain(self.netD_A.parameters(), self.netD_B.parameters(),
-                                                                    self.netD_A_pixel.parameters(), self.netD_B_pixel.parameters(),
-                                                                    self.netD_A_34.parameters(), self.netD_A_34.parameters()),
-                                                                    lr=opt.lr_d, betas=(opt.beta1, 0.999))
-
-
             self.optimizers.append(self.optimizer_D)
 
 
@@ -202,9 +130,6 @@ class CycleGAN(BaseModel):
         if self.sem_dropout:
             SM = networks2d.PairedSemanticDropout(0.3, 4)
             self.real_A, self.seg_A, self.real_B, self.seg_B = SM(self.real_A, self.seg_A, self.real_B, self.seg_B)
-            #data['A'], data['A_seg'], data['B'], data['B_seg'] = SM(data['A'], data['A_seg'], data['B'], data['B_seg'])
-
-        #print(self.seg_A)
 
     def forward(self):
 
@@ -213,15 +138,12 @@ class CycleGAN(BaseModel):
                 # segmentation conditioned cycle GAN with segmentation learnable
                 self.seg_real_A_out = self.netS_A(self.real_A) #
                 self.seg_real_B_out = self.netS_B(self.real_B)
-                #self.tmpS_A.load_state_dict(self.netS_A.state_dict())
-                #self.tmpS_B.load_state_dict(self.netS_B.state_dict())
                 if self.add_mask:
                     seg_cond_A = torch.cat([self.seg_real_A_out, self.mask_A], dim=1)
                     seg_cond_B = torch.cat([self.seg_real_B_out, self.mask_B], dim=1)
                 else:
                     seg_cond_A = self.seg_real_A_out
                     seg_cond_B = self.seg_real_B_out
-                #print(seg_cond_A.size())
                 self.fake_B, _, _, _ = self.netG_A(self.real_A, seg_cond_A, freeze=False)
                 self.fake_A, _, _, _ = self.netG_B(self.real_B, seg_cond_B, freeze=False)
 
@@ -240,10 +162,6 @@ class CycleGAN(BaseModel):
 
             else:
                 # cycle GAN with segmentation loss
-                # self.fake_B, self.seg_real_A_out, self.seg_A_off, self.loss_seg_A = self.netG_A(self.real_A, self.seg_A, freeze=False)
-                # self.rec_A, _, _, _ = self.netG_B(self.fake_B, self.seg_A, freeze=True)
-                # self.fake_A, self.seg_real_B_out, self.seg_B_off, self.loss_seg_B = self.netG_B(self.real_B, self.seg_B, freeze=False)
-                # self.rec_B, _, _,_ = self.netG_A(self.fake_A, self.seg_B, freeze=True)
                 self.fake_B = self.netG_A(self.real_A)
                 self.rec_A = self.netG_B(self.fake_B)
                 self.fake_A = self.netG_B(self.real_B)
@@ -299,18 +217,10 @@ class CycleGAN(BaseModel):
     def backward_D_A(self):
         """Calculate GAN loss for discriminator D_A"""
         self.loss_D_A = self.backward_D_basic(self.netD_A, self.real_B, self.fake_B)
-        if self.multiD:
-            self.loss_D_A = 0.5 * self.backward_D_basic(self.netD_A, self.real_B, self.fake_B) \
-                         + 0.3 * self.backward_D_basic(self.netD_A_34, self.real_B, self.fake_B)\
-                         + 0.2 * self.backward_D_basic(self.netD_A_pixel, self.real_B, self.fake_B)
 
     def backward_D_B(self):
         """Calculate GAN loss for discriminator D_B"""
         self.loss_D_B = self.backward_D_basic(self.netD_B, self.real_A, self.fake_A)
-        if self.multiD:
-            self.loss_D_B = 0.5 * self.backward_D_basic(self.netD_B, self.real_A, self.fake_A) \
-                            + 0.3 * self.backward_D_basic(self.netD_B_34, self.real_A, self.fake_A)\
-                            + 0.2 * self.backward_D_basic(self.netD_B_pixel, self.real_A, self.fake_A)
 
     def backward_G(self, steps):
         """Calculate the loss for generators G_A and G_B"""
@@ -365,114 +275,17 @@ class CycleGAN(BaseModel):
         loss_G = loss_G_A + loss_G_B
         return loss_G
 
-    def backward_G_A(self, steps):
-        lambda_idt = self.opt.lambda_identity
-        lambda_A = self.opt.lambda_A
-        lambda_B = self.opt.lambda_B
-        if lambda_idt > 0 :
-            # G_A should be identity if real_B is fed: ||G_A(B) - B||
-            self.idt_A = self.netG_A(self.real_B)
-            self.loss_idt_A = self.criterionIdt(self.idt_A, self.real_B) * lambda_B * lambda_idt
-
-        else:
-            self.loss_idt_A = 0
-        # GAN loss D_A(G_A(A))
-        self.loss_G_A = self.criterionGAN(self.netD_A(self.fake_B), True)
-        # Forward cycle loss || G_B(G_A(A)) - A||
-        self.loss_cycle_A = self.criterionCycle(self.rec_A, self.real_A) * lambda_A
-        loss_G_A = self.loss_G_A + self.loss_cycle_A + self.loss_idt_A
-
-        if self.multiD:
-            self.loss_G_A = 0.5*self.loss_G_A + 0.2*self.criterionGAN(self.netD_A_pixel(self.fake_B), True)\
-                           + 0.3*self.criterionGAN(self.netD_A_34(self.fake_B), True)
-
-        if self.learn_seg:
-            self.loss_seg_real_A = self.criterionSeg(self.seg_real_A_out, self.seg_A)#(steps < 500) *loss_seg_A + (steps > 500)* loss_seg_consist
-            self.loss_seg_fake_B = self.criterionSeg(self.seg_fake_B_out, self.seg_A)
-            loss_G_A += (self.loss_seg_real_A + self.loss_seg_fake_B)
-        return loss_G_A
-        #loss_G_A.backward()
-
-    def backward_G_B(self, steps):
-        """Calculate the loss for generators G_A and G_B"""
-        lambda_idt = self.opt.lambda_identity
-        lambda_A = self.opt.lambda_A
-        lambda_B = self.opt.lambda_B
-        # Identity loss
-        if lambda_idt > 0 :
-            # G_A should be identity if real_B is fed: ||G_A(B) - B||
-            #self.idt_A = self.netG_A(self.real_B)
-            #self.loss_idt_A = self.criterionIdt(self.idt_A, self.real_B) * lambda_B * lambda_idt
-            # G_B should be identity if real_A is fed: ||G_B(A) - A||
-            self.idt_B = self.netG_B(self.real_A)
-            self.loss_idt_B = self.criterionIdt(self.idt_B, self.real_A) * lambda_A * lambda_idt
-        else:
-            #self.loss_idt_A = 0
-            self.loss_idt_B = 0
-
-        # GAN loss D_A(G_A(A))
-        #self.loss_G_A = self.criterionGAN(self.netD_A(self.fake_B), True)
-
-        # GAN loss D_B(G_B(B))
-        self.loss_G_B = self.criterionGAN(self.netD_B(self.fake_A), True)
-
-        if self.multiD:
-            self.loss_G_B = 0.5*self.loss_G_B + 0.2*self.criterionGAN(self.netD_B_pixel(self.fake_A), True)\
-                            + 0.3*self.criterionGAN(self.netD_A_34(self.fake_A), True)   
-
-        # Forward cycle loss || G_B(G_A(A)) - A||
-        #self.loss_cycle_A = self.criterionCycle(self.rec_A, self.real_A) * lambda_A
-        # Backward cycle loss || G_A(G_B(B)) - B||
-        self.loss_cycle_B = self.criterionCycle(self.rec_B, self.real_B) * lambda_B
-        # combined loss and calculate gradients
-        loss_G_B = self.loss_G_B + self.loss_cycle_B + self.loss_idt_B
-        if self.learn_seg:
-            self.loss_seg_real_B = self.criterionSeg(self.seg_real_B_out, self.seg_B.detach())
-            self.loss_seg_fake_A = self.criterionSeg(self.seg_fake_A_out, self.seg_B.detach())
-            loss_G_B += (self.loss_seg_real_B+ self.loss_seg_fake_A)
-        return loss_G_B
-        #loss_G_B.backward()
-
-
-
     def optimize_parameters(self, steps):
         """Calculate losses, gradients, and update network weights; called in every training iteration"""
         # forward
         self.forward()  # compute fake images and reconstruction images.
-        #print(self.fake_B.max().item(), self.fake_B.min().item(), self.fake_A.max().item(), self.fake_A.min().item())
 
-        # G_A, S_A and G_B
+        # G_A, S_A and G_B, S_B
         self.set_requires_grad([self.netD_A, self.netD_B], False)  # Ds require no gradients when optimizing Gs
-        #self.set_requires_grad([self.netS_A], True)
-        #self.set_requires_grad([self.netS_B], False) # S_B requires no grads when doing A to B to A translation
-        '''
-          if self.learn_seg:
-            self.optimizer_G_B.zero_grad()
-            loss_G_B = self.backward_G_B(steps)
-            loss_G_B.backward()
-            self.optimizer_G_B.step()
-
-            self.optimizer_G_A.zero_grad()  # set G_A, S_A and G_B, S_B's gradients to zero
-            loss_G_A = self.backward_G_A(steps)  # calculate gradients for G_A and G_B, S_A (x -> y' -> x' only)
-            loss_G_A.backward()
-            self.optimizer_G_A.step()
-        else:
-        
-        '''
         self.optimizer_G.zero_grad()
         loss_G = self.backward_G(steps)
         loss_G.backward()
         self.optimizer_G.step()
-        #loss_G = loss_G_A + loss_G_B
-        #loss_G.backward()
-        #self.optimizer_G.step()  # update G_A, S_A and G_B's weights
-
-        # G_B, S_B and G_A
-        #self.optimizer_G_B.zero_grad()
-        #self.set_requires_grad([self.netS_B], True)
-        #self.set_requires_grad([self.netS_A], False) # S_A requires no grads when doing B to A to B translation
-        #self.backward_G_B(steps)
-        #self.optimizer_G_B.step()  # update G_B, S_B and G_A's weights
 
         # D_A and D_B
         self.set_requires_grad([self.netD_A, self.netD_B], True)
