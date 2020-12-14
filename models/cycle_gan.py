@@ -144,8 +144,8 @@ class CycleGAN(BaseModel):
                 else:
                     seg_cond_A = self.seg_real_A_out
                     seg_cond_B = self.seg_real_B_out
-                self.fake_B, _, _, _ = self.netG_A(self.real_A, seg_cond_A, freeze=False)
-                self.fake_A, _, _, _ = self.netG_B(self.real_B, seg_cond_B, freeze=False)
+                self.fake_B = self.netG_A(self.real_A, seg_cond_A, freeze=False)
+                self.fake_A = self.netG_B(self.real_B, seg_cond_B, freeze=False)
 
                 self.seg_fake_B_out = self.netS_B(self.fake_B)#self.tmpS_B(self.fake_B)#.detach()
                 self.seg_fake_A_out = self.netS_A(self.fake_A)#self.tmpS_A(self.fake_A)#.detach()
@@ -157,8 +157,8 @@ class CycleGAN(BaseModel):
                     seg_cond_A_fake = self.seg_fake_B_out
                     seg_cond_B_fake = self.seg_fake_A_out
 
-                self.rec_A, _, _, _ = self.netG_B(self.fake_B, seg_cond_A_fake, freeze=True)
-                self.rec_B, _, _, _ = self.netG_A(self.fake_A, seg_cond_B_fake, freeze=True)
+                self.rec_A = self.netG_B(self.fake_B, seg_cond_A_fake, freeze=True)
+                self.rec_B = self.netG_A(self.fake_A, seg_cond_B_fake, freeze=True)
 
             else:
                 # cycle GAN with segmentation loss
@@ -262,15 +262,10 @@ class CycleGAN(BaseModel):
         if self.learn_seg:
             self.loss_seg_real_A = self.criterionSeg(self.seg_real_A_out, torch.argmax(self.seg_A.detach(), dim=1).long())
             self.loss_seg_real_B = self.criterionSeg(self.seg_real_B_out, torch.argmax(self.seg_B.detach(), dim=1).long())
-            # print('Pretrained loss B', self.loss_seg_real_B.item())
             self.loss_seg_fake_A = self.criterionSeg(self.seg_fake_A_out, torch.argmax(self.seg_B.detach(), dim=1).long())
             self.loss_seg_fake_B = self.criterionSeg(self.seg_fake_B_out, torch.argmax(self.seg_A.detach(), dim=1).long())
-            if self.spade:
-                flag = 1.#(steps > 100)
-            else:
-                flag = 1.
-            loss_G_A += flag * (self.loss_seg_real_A*0.5 + self.loss_seg_fake_B*0.05)
-            loss_G_B += flag * (self.loss_seg_real_B*0.5 + self.loss_seg_fake_A*0.05)  # (self.loss_seg_real_B + self.loss_seg_fake_A)
+            loss_G_A += (self.loss_seg_real_A*0.5 + self.loss_seg_fake_B*0.05)
+            loss_G_B += (self.loss_seg_real_B*0.5 + self.loss_seg_fake_A*0.05)  # (self.loss_seg_real_B + self.loss_seg_fake_A)
             # loss_G_B += (self.loss_seg_real_B+ self.loss_seg_fake_A)
         loss_G = loss_G_A + loss_G_B
         return loss_G
@@ -293,8 +288,3 @@ class CycleGAN(BaseModel):
         self.backward_D_A()  # calculate gradients for D_A
         self.backward_D_B()  # calculate graidents for D_B
         self.optimizer_D.step()  # update D_A and D_B's weights
-
-    def add_channelwise_noise(self, in_tensor, sigma):
-        noisy_image = torch.zeros(list(in_tensor.size())).data.normal_(0, sigma).cuda() + in_tensor
-        # noisy_tensor = 2 * (noisy_image - noisy_image.min()) / (noisy_image.max() - noisy_image.min()) - 1
-        return noisy_image
