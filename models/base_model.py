@@ -100,14 +100,14 @@ class BaseModel(ABC):
     def test(self):
         """Forward function used in test time.
         This function wraps <forward> function in no_grad() so we don't save intermediate steps for backprop
-        It also calls <compute_visuals> to produce additional visualization results
+        It also calls <compute_visuals> to produce additional visualization.py results
         """
         with torch.no_grad():
             self.forward()
             self.compute_visuals()
 
     def compute_visuals(self):
-        """Calculate additional output images for visdom and HTML visualization"""
+        """Calculate additional output images for visdom and HTML visualization.py"""
         pass
 
     def get_image_paths(self):
@@ -126,7 +126,7 @@ class BaseModel(ABC):
         print('learning rate = %.7f' % lr)
 
     def get_current_visuals(self):
-        """Return visualization images. train.py will display these images with visdom, and save the images to a HTML"""
+        """Return visualization.py images. train.py will display these images with visdom, and save the images to a HTML"""
         visual_ret = OrderedDict()
         for name in self.visual_names:
             if isinstance(name, str):
