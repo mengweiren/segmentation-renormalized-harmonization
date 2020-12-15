@@ -14,9 +14,9 @@ python mains/train.py --name 'seg_renorm_cyclegan'\
       --model 'cycle_gan_2d'\
       --checkpoints_dir '../ckpts' \
       --crop_size 128 \
-      --batch_size 2 \
+      --batch_size 4 \
       --lr_g 0.0002 \
-      --lr_d 0.0002 \
+      --lr_d 0.0001 \
       --gpu_id 0\
       --ngf 64 \
       --ndf 64 \
