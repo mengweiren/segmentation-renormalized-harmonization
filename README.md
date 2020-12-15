@@ -35,7 +35,6 @@ python mains/train.py --name 'seg_renorm_cyclegan'\
       --lambda_tv 0\
       --lambda_A 10\
       --lambda_B 10\
-      --multiscaleD 0\
       --gan_mode 'lsgan'\
       --init_type 'normal'\
       --seg_nc 4\
