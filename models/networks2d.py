@@ -518,12 +518,12 @@ class SharedResSpadeUnetGenerator(nn.Module):
         out = self.middle_0(out, seg_feat)  #8n, w/8, h/8
         out = self.middle_1(out, seg_feat)  #8n, w/8, h/8
         #out = self.up(out)  # 8n, w/8, h/8
-        out = self.up_2(torch.cat([out, x_2], 1), seg_feat)  #4n, w/8, w/8
+        out = self.up_2(torch.cat((out, x_2), 1), seg_feat)  #4n, w/8, w/8
         out = self.up(out) #4n, w/4, w/4
-        out = self.up_1(torch.cat([out, x_1], 1), seg_feat)  #2n, w/4, w/4
+        out = self.up_1(torch.cat((out, x_1), 1), seg_feat)  #2n, w/4, w/4
 
         out = self.up(out)   #2n, w/2, h/2
-        out = self.up_0(torch.cat([out, x_0], 1), seg_feat)  #n, w/2, w/2
+        out = self.up_0(torch.cat((out, x_0), 1), seg_feat)  #n, w/2, w/2
 
         out = self.up(out)   #n, w, h
         out = self.tail(F.leaky_relu(out, 2e-1))
