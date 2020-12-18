@@ -466,6 +466,72 @@ def cal_gradient_penalty(netD, real_data, fake_data, device, type='mixed', const
         return 0.0, None
 
 
+class SharedResSpadeUnetGenerator(nn.Module):
+    def __init__(self, input_nc, output_nc, ngf, norm_layer=nn.InstanceNorm2d, use_dropout=False, padding_type='zeros', label_nc=4):
+        super(SharedResSpadeUnetGenerator, self).__init__()
+        if type(norm_layer) == functools.partial:
+            use_bias = norm_layer.func == nn.InstanceNorm2d
+        else:
+            use_bias = norm_layer == nn.InstanceNorm2d
+
+        self.shared_seg_feature = SegFeature(label_nc=label_nc)
+        self.head = nn.Conv2d(input_nc, ngf, kernel_size=4, stride=2, padding=1, bias=use_bias)
+
+        #self.down_0 = nn.Conv2d(ngf, ngf, kernel_size=4, stride=2, padding=1, bias=use_bias)
+        self.down_spade_0 = SharedSPADEResBlock(1*ngf, 2*ngf)
+
+        self.down_1 = nn.Conv2d(2*ngf, 2*ngf, kernel_size=4, stride=2, padding=1, bias=use_bias)
+        self.down_spade_1 = SharedSPADEResBlock(2*ngf, 4*ngf)
+
+        self.down_2 = nn.Conv2d(4*ngf, 4*ngf, kernel_size=4, stride=2, padding=1, bias=use_bias)
+        self.down_spade_2 = SharedSPADEResBlock(4*ngf, 8*ngf)
+
+        self.down_3 = nn.Conv2d(8*ngf, 8*ngf, kernel_size=4, stride=2, padding=1, bias=use_bias)
+        self.down_spade_3 = SharedSPADEResBlock(8*ngf, 8*ngf)
+
+        self.middle_0 = SharedSPADEResBlock(8*ngf, 8*ngf)
+        self.middle_1 = SharedSPADEResBlock(8*ngf, 8*ngf)
+
+        self.up = nn.Upsample(scale_factor=2)
+        self.up_3 = SharedSPADEResBlock(16*ngf, 8*ngf)
+        self.up_2 = SharedSPADEResBlock(16*ngf, 4*ngf)
+        self.up_1 = SharedSPADEResBlock(8*ngf, 2*ngf)
+        self.up_0 = SharedSPADEResBlock(4*ngf, 1*ngf)
+
+        self.tail = nn.Conv2d(ngf, output_nc, kernel_size=3, stride=1, padding=1, bias=use_bias)
+        self.activate = nn.Tanh()
+
+    def set_required_grad(self, requires_grad):
+        for param in self.parameters():
+            param.requires_grad = requires_grad
+
+    def forward(self, input, seg):
+        #self.set_required_grad(not freeze)
+        seg_feat, seg_rep, seg_off, loss = self.shared_seg_feature(input, seg)
+        x = self.head(input)  # n, w/2, h/2
+        x = F.relu(x)
+        x_0 = self.down_spade_0(x, seg_feat)  # 2n, w/2, h/2
+        x_1 = self.down_spade_1(self.down_1(x_0), seg_feat)  # 4n, w/4, h/4
+        x_2 = self.down_spade_2(self.down_2(x_1), seg_feat)  # 8n, w/8, h/8
+        x_3 = self.down_spade_3(self.down_3(x_2), seg_feat)  # 8n, w/16, h/16
+        out = self.up(x_3) # 8n, w/8, h/8
+        out = self.middle_0(out, seg_feat)  #8n, w/8, h/8
+        out = self.middle_1(out, seg_feat)  #8n, w/8, h/8
+        #out = self.up(out)  # 8n, w/8, h/8
+        out = self.up_2(torch.cat([out, x_2], 1), seg_feat)  #4n, w/8, w/8
+        out = self.up(out) #4n, w/4, w/4
+        out = self.up_1(torch.cat([out, x_1], 1), seg_feat)  #2n, w/4, w/4
+
+        out = self.up(out)   #2n, w/2, h/2
+        out = self.up_0(torch.cat([out, x_0], 1), seg_feat)  #n, w/2, w/2
+
+        out = self.up(out)   #n, w, h
+        out = self.tail(F.leaky_relu(out, 2e-1))
+
+        out = self.activate(out)
+        return out
+
+
 class ResnetGenerator(nn.Module):
     """Resnet-based generator that consists of Resnet blocks between a few downsampling/upsampling operations.
     We adapt Torch code and idea from Justin Johnson's neural style transfer project(https://github.com/jcjohnson/fast-neural-style)
