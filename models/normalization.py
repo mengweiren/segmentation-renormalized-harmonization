@@ -159,17 +159,9 @@ class SharedSPADE(nn.Module):
         self.mlp_gamma = nn.Linear(nhidden, norm_nc)
         self.mlp_beta = nn.Linear(nhidden, norm_nc)
 
-    def forward(self, x, seg_feat, freeze):
+    def forward(self, x, seg_feat):
         # Part 1. generate parameter-free normalized activations
         normalized = self.param_free_norm(x)
-
-        if freeze:
-            self.mlp_beta.eval()
-            self.mlp_gamma.eval()
-
-        else:
-            self.mlp_gamma.train()
-            self.mlp_beta.train()
 
         # Part 2. produce scaling and bias conditioned on semantic map
         gamma = self.mlp_gamma(seg_feat)
