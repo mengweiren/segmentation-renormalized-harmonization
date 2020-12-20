@@ -94,10 +94,10 @@ class CycleGAN(BaseModel):
             self.criterionCycle = torch.nn.L1Loss(reduction='mean')
             self.criterionIdt = torch.nn.L1Loss(reduction='mean')
             if self.learn_seg:
-                if opt.dataset == 'ixi' or opt.dataset == 'adni': bg_lambda = 0.5
-                if opt.dataset == 'retouch' or opt.dataset=='msseg': bg_lambda = 0.7
-                neg_w, pos_w = 0.2, 0.8
-                self.criterionSeg = nn.CrossEntropyLoss(weight=torch.tensor([neg_w, pos_w]).cuda())
+                if opt.dataset == 'ixi': seg_weights = [0.5, 0.5, 0.5, 0.5]
+                if opt.dataset == 'retouch': seg_weights = [0.3, 0.7, 0.7, 0.7]
+                if opt.dataset == 'msseg': seg_weights = [0.2, 0.8]
+                self.criterionSeg = nn.CrossEntropyLoss(weight=torch.tensor(seg_weights).cuda())
             # initialize optimizers; schedulers will be automatically created by function <BaseModel.setup>.
 
             if self.learn_seg:
