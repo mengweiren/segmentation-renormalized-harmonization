@@ -16,9 +16,9 @@ To speed up data loading for medical images which are typically 3D in Nifti/Nrrd
 Use the script below to start training a translation model, where the naming convention of parameters follows the original CycleGAN implementation. 
 
 "--joint_seg | --spade | --sem_dropout" are used to specify different models:
-- If none of them is specified, CycleGAN is used;
-- Specify --joint_seg to use S-CycleGAN (2D reimplementation) ;
-- Specify --joint_seg and --sem_dropout to use SemGAN;
+- If none of them is specified, [CycleGAN](https://arxiv.org/abs/1703.10593) is used;
+- Specify --joint_seg to use [S-CycleGAN](https://openaccess.thecvf.com/content_cvpr_2018/papers/Zhang_Translating_and_Segmenting_CVPR_2018_paper.pdf)  (2D version) ;
+- Specify --joint_seg and --sem_dropout to use [SemGAN](https://arxiv.org/abs/1807.04409);
 - Specify --joint_seg and --spade to use proposed model. 
 ```shell script
 python mains/train.py --name 'seg_renorm_cyclegan'\
