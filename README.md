@@ -8,7 +8,17 @@ conda create --name srn python=3.7
 pip install -r requirements.txt
 ```
 
+## Prepare the data
+To speed up data loading for medical images which are typically 3D in Nifti/Nrrd/mhd format, h5 files are recommended for PyTorch dataloader. After train/test split, merge all 2D slices of subjects from each set to form a [N,w,h,1] array, where N is the number of total slices, (w,h) is the image size. Save arrays from source and target domains as a group 'src' (for source domain) and 'trg' (for target domain) in the h5 file. 
+
 ## Training
+Use the script below to start training a translation model, where the naming convention of parameters follows the original CycleGAN implementation. 
+
+"--joint_seg | --spade | --sem_dropout" are used to specify different models:
+- If none of them is specified, CycleGAN is used;
+- Specify --joint_seg to use S-CycleGAN (2D reimplementation) ;
+- Specify --joint_seg and --sem_dropout to use SemGAN;
+- Specify --joint_seg and --spade to use proposed model. 
 ```shell script
 python mains/train.py --name 'seg_renorm_cyclegan'\
       --model 'cycle_gan_2d'\
@@ -28,7 +38,6 @@ python mains/train.py --name 'seg_renorm_cyclegan'\
       --save_latest_freq 2  \
       --input_nc 1\
       --output_nc 1\
-      --thickness 1\
       --dataset 'ixi'\
       --lambda_identity 0\
       --lambda_cc 0\
