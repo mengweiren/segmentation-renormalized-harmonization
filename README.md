@@ -2,6 +2,7 @@
 
 An anatomically-regularized un-paired image-to-image translation framework built on CycleGAN (https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix).
 
+![pipeline](pipeline.eps)
 ## Environment
 ```shell script
 conda create --name srn python=3.7
