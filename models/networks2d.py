@@ -407,30 +407,6 @@ class GANLoss(nn.Module):
         return loss
 
 
-def correlation_coefficient_loss(real, fake):
-    """Calculate the correlation coefficient"""
-    var_real = real - torch.mean(real)
-    var_fake = fake - torch.mean(fake)
-
-    cc = torch.sum(var_real * var_fake) / (1e-5+(torch.sqrt(torch.sum(var_real ** 2)) * torch.sqrt(torch.sum(var_fake ** 2))))
-    return cc
-
-
-def tv_loss(img, tv_weight):
-    """
-    Compute total variation loss.
-    Inputs:
-    - img: PyTorch Variable of shape (1, 3, H, W) holding an input image.
-    - tv_weight: Scalar giving the weight w_t to use for the TV loss.
-    Returns:
-    - loss: PyTorch Variable holding a scalar giving the total variation loss
-      for img weighted by tv_weight.
-    """
-    w_variance = torch.sum(torch.pow(img[:,:,:,:-1] - img[:,:,:,1:], 2))
-    h_variance = torch.sum(torch.pow(img[:,:,:-1,:] - img[:,:,1:,:], 2))
-    tv = tv_weight * (h_variance + w_variance)
-    return tv
-
 def cal_gradient_penalty(netD, real_data, fake_data, device, type='mixed', constant=1.0, lambda_gp=10.0):
     """Calculate the gradient penalty loss, used in WGAN-GP paper https://arxiv.org/abs/1704.00028
     Arguments:
