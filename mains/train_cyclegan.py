@@ -19,7 +19,7 @@ import numpy as np
 import matplotlib
 
 matplotlib.use('Agg')
-from utils.utilization import normalizedImage3, mkdir, mkdirs
+from utils.utilization import mkdir, mkdirs
 from utils.visualization import tensorboard_vis, create_group_fig
 from utils.evaluation import eval_segmentation_batch
 from models.networks2d import SingleSemanticDropout, PairedSemanticDropout

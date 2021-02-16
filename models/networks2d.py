@@ -4,7 +4,7 @@ from torch.nn import init
 import functools
 from torch.optim import lr_scheduler
 import torch.nn.functional as F
-from models.normalization import SPADE, SegFeature, SharedSPADE
+from models.normalization import SegFeature, SharedSRenorm
 import torch.nn.utils.spectral_norm as spectral_norm
 import numpy as np
 import random
@@ -113,7 +113,7 @@ def init_net(net, init_type='normal', init_gain=0.02, gpu_ids=[]):
 
 
 def define_G(input_nc, output_nc, ngf=64, netG='resunet', norm='batch', use_dropout=False, init_type='normal',
-             init_gain=0.02, gpu_ids=[], return_feature=False, spade=False, is_seg=False, seg_nc=4):
+             init_gain=0.02, gpu_ids=[], return_feature=False, srenorm=False, is_seg=False, seg_nc=4):
     """Create a generator
     Parameters:
         input_nc (int) -- the number of channels in input images
@@ -141,8 +141,8 @@ def define_G(input_nc, output_nc, ngf=64, netG='resunet', norm='batch', use_drop
     elif netG == 'unet':
         net = UnetGenerator(input_nc, output_nc, 7, ngf, norm_layer=norm_layer, use_dropout=use_dropout, upsample=False)
     elif netG == 'resunet':
-        if spade:
-            net = SharedResSpadeUnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, label_nc=seg_nc)
+        if srenorm:
+            net = SRenormGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, label_nc=seg_nc)
         else:
             net = UnetGenerator(input_nc, output_nc, 7, ngf, norm_layer=norm_layer,
                                 use_dropout=use_dropout, upsample=False, res=True, is_seg=is_seg)
@@ -151,8 +151,6 @@ def define_G(input_nc, output_nc, ngf=64, netG='resunet', norm='batch', use_drop
                             use_dropout=use_dropout, upsample=False, res=True, is_seg=True)
     elif netG == 'resunet_up':
         net = UnetGenerator(input_nc, output_nc, 7, ngf, norm_layer=norm_layer, use_dropout=use_dropout, upsample=True, res=True)
-    elif netG == 'resnet_6blocks':
-        net = ResnetGenerator(input_nc, output_nc, ngf, norm_layer=norm_layer, use_dropout=use_dropout, n_blocks=6)
     else:
         raise NotImplementedError('Generator model name [%s] is not recognized' % netG)
     return init_net(net, init_type, init_gain, gpu_ids)
@@ -442,9 +440,9 @@ def cal_gradient_penalty(netD, real_data, fake_data, device, type='mixed', const
         return 0.0, None
 
 
-class SharedResSpadeUnetGenerator(nn.Module):
+class SRenormGenerator(nn.Module):
     def __init__(self, input_nc, output_nc, ngf, norm_layer=nn.InstanceNorm2d, use_dropout=False, padding_type='zeros', label_nc=4):
-        super(SharedResSpadeUnetGenerator, self).__init__()
+        super(SRenormGenerator, self).__init__()
         if type(norm_layer) == functools.partial:
             use_bias = norm_layer.func == nn.InstanceNorm2d
         else:
@@ -454,25 +452,25 @@ class SharedResSpadeUnetGenerator(nn.Module):
         self.head = nn.Conv2d(input_nc, ngf, kernel_size=4, stride=2, padding=1, bias=use_bias)
 
         #self.down_0 = nn.Conv2d(ngf, ngf, kernel_size=4, stride=2, padding=1, bias=use_bias)
-        self.down_spade_0 = SharedSPADEResBlock(1*ngf, 2*ngf)
+        self.down_spade_0 = SharedSReNormResBlock(1*ngf, 2*ngf)
 
         self.down_1 = nn.Conv2d(2*ngf, 2*ngf, kernel_size=4, stride=2, padding=1, bias=use_bias)
-        self.down_spade_1 = SharedSPADEResBlock(2*ngf, 4*ngf)
+        self.down_spade_1 = SharedSReNormResBlock(2*ngf, 4*ngf)
 
         self.down_2 = nn.Conv2d(4*ngf, 4*ngf, kernel_size=4, stride=2, padding=1, bias=use_bias)
-        self.down_spade_2 = SharedSPADEResBlock(4*ngf, 8*ngf)
+        self.down_spade_2 = SharedSReNormResBlock(4*ngf, 8*ngf)
 
         self.down_3 = nn.Conv2d(8*ngf, 8*ngf, kernel_size=4, stride=2, padding=1, bias=use_bias)
-        self.down_spade_3 = SharedSPADEResBlock(8*ngf, 8*ngf)
+        self.down_spade_3 = SharedSReNormResBlock(8*ngf, 8*ngf)
 
-        self.middle_0 = SharedSPADEResBlock(8*ngf, 8*ngf)
-        self.middle_1 = SharedSPADEResBlock(8*ngf, 8*ngf)
+        self.middle_0 = SharedSReNormResBlock(8*ngf, 8*ngf)
+        self.middle_1 = SharedSReNormResBlock(8*ngf, 8*ngf)
 
         self.up = nn.Upsample(scale_factor=2)
-        self.up_3 = SharedSPADEResBlock(16*ngf, 8*ngf)
-        self.up_2 = SharedSPADEResBlock(16*ngf, 4*ngf)
-        self.up_1 = SharedSPADEResBlock(8*ngf, 2*ngf)
-        self.up_0 = SharedSPADEResBlock(4*ngf, 1*ngf)
+        self.up_3 = SharedSReNormResBlock(16*ngf, 8*ngf)
+        self.up_2 = SharedSReNormResBlock(16*ngf, 4*ngf)
+        self.up_1 = SharedSReNormResBlock(8*ngf, 2*ngf)
+        self.up_0 = SharedSReNormResBlock(4*ngf, 1*ngf)
 
         self.tail = nn.Conv2d(ngf, output_nc, kernel_size=3, stride=1, padding=1, bias=use_bias)
         self.activate = nn.Tanh()
@@ -643,163 +641,6 @@ class ResidualBasicBlock(nn.Module):
         return out
 
 
-class SPADEGenerator(nn.Module):
-    def __init__(self, opt, num_upsampling_layers='most', use_vae=False, z_dim=2048, norm_G='spadeinstance3x3'):
-        super().__init__()
-        self.opt = opt
-        nf = opt.ngf
-        semantic_nc = 4
-        self.use_vae = use_vae
-        self.sw, self.sh = self.compute_latent_vector_size(num_upsampling_layers, opt)
-        self.num_upsampling_layers = num_upsampling_layers
-        if self.use_vae:
-            # In case of VAE, we will sample from random z vector
-            self.fc = nn.Linear(z_dim, 16 * nf * self.sw * self.sh)
-        else:
-            # Otherwise, we make the network deterministic by starting with
-            # downsampled segmentation map instead of random z
-            self.fc = nn.Conv2d(semantic_nc, 16 * nf, 3, padding=1)
-
-        self.head_0 = SPADEResBlock(16 * nf, 16 * nf, norm_G, semantic_nc)
-
-        self.G_middle_0 = SPADEResBlock(16 * nf, 16 * nf, norm_G, semantic_nc)
-        self.G_middle_1 = SPADEResBlock(16 * nf, 16 * nf, norm_G, semantic_nc)
-
-        self.up_0 = SPADEResBlock(16 * nf, 8 * nf, norm_G, semantic_nc)
-        self.up_1 = SPADEResBlock(8 * nf, 4 * nf, norm_G, semantic_nc)
-        self.up_2 = SPADEResBlock(4 * nf, 2 * nf, norm_G, semantic_nc)
-        self.up_3 = SPADEResBlock(2 * nf, 1 * nf, norm_G, semantic_nc)
-
-        final_nc = nf
-
-        if num_upsampling_layers == 'most':
-            self.up_4 = SPADEResBlock(1 * nf, nf // 2, norm_G, semantic_nc)
-            final_nc = nf // 2
-
-        self.conv_img = nn.Conv2d(final_nc, 1, 3, padding=1)
-
-        self.up = nn.Upsample(scale_factor=2)
-
-        self.activate = nn.Tanh()
-
-    def compute_latent_vector_size(self, num_upsampling_layers, opt, aspect_ratio=1):
-        if num_upsampling_layers == 'normal':
-            num_up_layers = 5
-        elif num_upsampling_layers == 'more':
-            num_up_layers = 6
-        elif num_upsampling_layers == 'most':
-            num_up_layers = 7
-        else:
-            raise ValueError('opt.num_upsampling_layers [%s] not recognized' %
-                             num_upsampling_layers)
-
-        sw = opt.crop_size // (2**num_up_layers)
-        sh = round(sw / aspect_ratio)
-
-        return sw, sh
-
-    def forward(self, input, z=None):
-        seg = input
-
-        if self.use_vae:
-            # we sample z from unit normal and reshape the tensor
-            if z is None:
-                z = torch.randn(input.size(0), self.opt.z_dim,
-                                dtype=torch.float32, device=input.get_device())
-            x = self.fc(z)
-            x = x.view(-1, 16 * self.opt.ngf, self.sh, self.sw)
-        else:
-            # we downsample segmap and run convolution
-            x = F.interpolate(seg, size=(self.sh, self.sw))
-            x = self.fc(x)
-
-        x = self.head_0(x, seg)
-
-        x = self.up(x)
-        x = self.G_middle_0(x, seg)
-
-        if self.num_upsampling_layers == 'more' or \
-           self.num_upsampling_layers == 'most':
-            x = self.up(x)
-
-        x = self.G_middle_1(x, seg)
-
-        x = self.up(x)
-        x = self.up_0(x, seg)
-        x = self.up(x)
-        x = self.up_1(x, seg)
-        x = self.up(x)
-        x = self.up_2(x, seg)
-        x = self.up(x)
-        x = self.up_3(x, seg)
-
-        if self.num_upsampling_layers == 'most':
-            x = self.up(x)
-            x = self.up_4(x, seg)
-
-        x = self.conv_img(F.leaky_relu(x, 2e-1))
-        x = self.activate(x)
-        return x
-
-
-class ResSpadeUnetGenerator(nn.Module):
-    def __init__(self, input_nc, output_nc, ngf, norm_layer=nn.InstanceNorm2d, use_dropout=False, padding_type='zeros'):
-        super(ResSpadeUnetGenerator, self).__init__()
-        if type(norm_layer) == functools.partial:
-            use_bias = norm_layer.func == nn.InstanceNorm2d
-        else:
-            use_bias = norm_layer == nn.InstanceNorm2d
-
-        self.head = nn.Conv2d(input_nc, ngf, kernel_size=4, stride=2, padding=1, bias=use_bias)
-
-        self.down_spade_0 = SPADEResBlock(1*ngf, 2*ngf)
-
-        self.down_1 = nn.Conv2d(2*ngf, 2*ngf, kernel_size=4, stride=2, padding=1, bias=use_bias)
-        self.down_spade_1 = SPADEResBlock(2*ngf, 4*ngf)
-
-        self.down_2 = nn.Conv2d(4*ngf, 4*ngf, kernel_size=4, stride=2, padding=1, bias=use_bias)
-        self.down_spade_2 = SPADEResBlock(4*ngf, 8*ngf)
-
-        self.down_3 = nn.Conv2d(8*ngf, 8*ngf, kernel_size=4, stride=2, padding=1, bias=use_bias)
-        self.down_spade_3 = SPADEResBlock(8*ngf, 8*ngf)
-
-        self.middle_0 = SPADEResBlock(8*ngf, 8*ngf)
-        self.middle_1 = SPADEResBlock(8*ngf, 8*ngf)
-
-        self.up = nn.Upsample(scale_factor=2)
-        self.up_3 = SPADEResBlock(16*ngf, 8*ngf)
-        self.up_2 = SPADEResBlock(16*ngf, 4*ngf)
-        self.up_1 = SPADEResBlock(8*ngf, 2*ngf)
-        self.up_0 = SPADEResBlock(4*ngf, 1*ngf)
-
-        self.tail = nn.Conv2d(ngf, output_nc, kernel_size=3, stride=1, padding=1, bias=use_bias)
-        self.activate = nn.Tanh()
-
-    def forward(self, input, seg):
-        x = self.head(input)  # n, w/2, h/2
-        x = F.relu(x)
-        x_0 = self.down_spade_0(x, seg)  # 2n, w/2, h/2
-        x_1 = self.down_spade_1(self.down_1(x_0), seg)  # 4n, w/4, h/4
-        x_2 = self.down_spade_2(self.down_2(x_1), seg)  # 8n, w/8, h/8
-        x_3 = self.down_spade_3(self.down_3(x_2), seg)  # 8n, w/16, h/16
-        out = self.up(x_3) # 8n, w/8, h/8
-        out = self.middle_0(out, seg)  #8n, w/8, h/8
-        out = self.middle_1(out, seg)  #8n, w/8, h/8
-        #out = self.up(out)  # 8n, w/8, h/8
-        out = self.up_2(torch.cat([out, x_2], 1), seg)  #4n, w/8, w/8
-        out = self.up(out) #4n, w/4, w/4
-        out = self.up_1(torch.cat([out, x_1], 1), seg)  #2n, w/4, w/4
-
-        out = self.up(out)   #2n, w/2, h/2
-        out = self.up_0(torch.cat([out, x_0], 1), seg)  #n, w/2, w/2
-
-        out = self.up(out)   #n, w, h
-        out = self.tail(F.leaky_relu(out, 2e-1))
-
-        out = self.activate(out)
-        return out, None, None, None
-
-
 
 class UnetGenerator(nn.Module):
     """Create a Unet-based generator"""
@@ -966,7 +807,7 @@ class UnetSkipConnectionBlock(nn.Module):
 
 
 
-class SPADEResBlock(nn.Module):
+class SReNormResBlock(nn.Module):
     def __init__(self, fin, fout, norm_G='spadeinstance3x3', semantic_nc=4):
         super().__init__()
         # Attributes
@@ -987,14 +828,8 @@ class SPADEResBlock(nn.Module):
                 self.conv_s = spectral_norm(self.conv_s)
 
         # define normalization layers
-        spade_config_str = norm_G.replace('spectral', '')
-        self.norm_0 = SPADE(spade_config_str, fin, semantic_nc)
-        self.norm_1 = SPADE(spade_config_str, fmiddle, semantic_nc)
-        if self.learned_shortcut:
-            self.norm_s = SPADE(spade_config_str, fin, semantic_nc)
+        # PASS
 
-    # note the resnet block with SPADE also takes in |seg|,
-    # the semantic segmentation map as input
     def forward(self, x, seg):
         x_s = self.shortcut(x, seg)
 
@@ -1016,16 +851,16 @@ class SPADEResBlock(nn.Module):
         return F.leaky_relu(x, 2e-1)
 
 
-class SharedSPADEResBlock(SPADEResBlock):
+class SharedSReNormResBlock(SReNormResBlock):
     def __init__(self, fin, fout, norm_G='spadeinstance3x3', semantic_nc=4):
         #super().__init__(fin, fout)
-        SPADEResBlock.__init__(self, fin, fout, norm_G='spadeinstance3x3', semantic_nc=4)
+        SReNormResBlock.__init__(self, fin, fout, norm_G='spadeinstance3x3', semantic_nc=4)
         fmiddle = min(fin, fout)
         spade_config_str = norm_G.replace('spectral', '')
-        self.norm_0 = SharedSPADE(spade_config_str, norm_nc=fin, label_nc=semantic_nc)
-        self.norm_1 = SharedSPADE(spade_config_str, norm_nc=fmiddle, label_nc=semantic_nc)
+        self.norm_0 = SharedSRenorm(spade_config_str, norm_nc=fin, label_nc=semantic_nc)
+        self.norm_1 = SharedSRenorm(spade_config_str, norm_nc=fmiddle, label_nc=semantic_nc)
         if self.learned_shortcut:
-            self.norm_s = SharedSPADE(spade_config_str, fin, semantic_nc)
+            self.norm_s = SharedSRenorm(spade_config_str, fin, semantic_nc)
 
     def forward(self, x, seg):
         x_s = self.shortcut(x, seg)

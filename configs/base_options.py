@@ -80,7 +80,7 @@ class BaseOptions():
         parser.add_argument('--lambda_cc', type=float, default=0.5,help='use correlation coefficient loss if larger than 0')
         parser.add_argument('--lambda_tv', type=float, default=0.5,help='use total variance regularization if larger than 0')
         parser.add_argument('--fid', action='store_true',help='calculate frechet inception distance')
-        parser.add_argument('--spade', action='store_true',help='using spatial adaptive denormalization')
+        parser.add_argument('--srenorm', action='store_true',help='using spatial adaptive denormalization')
         parser.add_argument('--joint_seg', action='store_true',help='learning segmentation instead of input segmentation map, and using spatial adaptive denormalization')
         parser.add_argument('--prob_seg', action='store_true',help='segmentation map is a probability')
         parser.add_argument('--load_epoch', type=int, default=0, help='continue training: the epoch to continue from')

@@ -17,7 +17,7 @@ class CycleGAN(BaseModel):
         if opt.lambda_tv > 0:
             self.loss_names.append('tv_AB')
             self.loss_names.append('tv_BA')
-        self.spade = opt.spade
+        self.srenorm = opt.srenorm
         self.learn_seg = opt.joint_seg
         if opt.joint_seg:
             self.loss_names.append('seg_real_A')
@@ -59,10 +59,10 @@ class CycleGAN(BaseModel):
             self.add_mask = False
         self.netG_A = networks.define_G(opt.input_nc, opt.output_nc, opt.ndf, opt.typeG, norm=opt.norm,
                                         use_dropout=not opt.no_dropout, init_type=opt.init_type,
-                                        init_gain=opt.init_gain, gpu_ids=opt.gpu_ids, return_feature=opt.fid, spade=opt.spade,seg_nc=film_nc)
+                                        init_gain=opt.init_gain, gpu_ids=opt.gpu_ids, return_feature=opt.fid, srenorm=opt.srenorm,seg_nc=film_nc)
         self.netG_B = networks.define_G(opt.output_nc, opt.input_nc, opt.ndf, opt.typeG, norm=opt.norm,
                                         use_dropout=not opt.no_dropout, init_type=opt.init_type,
-                                        init_gain=opt.init_gain, gpu_ids=opt.gpu_ids, return_feature=opt.fid, spade=opt.spade,seg_nc=film_nc)
+                                        init_gain=opt.init_gain, gpu_ids=opt.gpu_ids, return_feature=opt.fid, srenorm=opt.srenorm,seg_nc=film_nc)
         if self.learn_seg:
             if opt.dataset == 'msseg':
                 stype = 'unet_up'
@@ -73,10 +73,10 @@ class CycleGAN(BaseModel):
             self.model_names.append('S_B')
             self.netS_A = networks.define_G(opt.input_nc, opt.seg_nc, opt.ngf, netG=stype, norm=opt.norm,
                                         use_dropout=not opt.no_dropout, init_type=opt.init_type,
-                                        init_gain=opt.init_gain, gpu_ids=opt.gpu_ids, return_feature=opt.fid, spade=False, is_seg=True)
+                                        init_gain=opt.init_gain, gpu_ids=opt.gpu_ids, return_feature=opt.fid, srenorm=False, is_seg=True)
             self.netS_B = networks.define_G(opt.input_nc, opt.seg_nc, opt.ngf, netG=stype, norm=opt.norm,
                                         use_dropout=not opt.no_dropout, init_type=opt.init_type,
-                                        init_gain=opt.init_gain, gpu_ids=opt.gpu_ids, return_feature=opt.fid, spade=False, is_seg=True)
+                                        init_gain=opt.init_gain, gpu_ids=opt.gpu_ids, return_feature=opt.fid, srenorm=False, is_seg=True)
 
         if self.isTrain:  # define discriminators
             self.multiD = False
@@ -134,7 +134,7 @@ class CycleGAN(BaseModel):
     def forward(self):
 
         if self.learn_seg:
-            if self.spade:
+            if self.srenorm:
                 # segmentation conditioned cycle GAN with segmentation learnable
                 self.seg_real_A_out = self.netS_A(self.real_A) #
                 self.seg_real_B_out = self.netS_B(self.real_B)
@@ -244,12 +244,6 @@ class CycleGAN(BaseModel):
 
         # GAN loss D_B(G_B(B))
         self.loss_G_B = self.criterionGAN(self.netD_B(self.fake_A), True)
-
-        if self.multiD:
-            self.loss_G_A = 0.5 * self.loss_G_A + 0.2 * self.criterionGAN(self.netD_A_pixel(self.fake_B), True) \
-                            + 0.3 * self.criterionGAN(self.netD_A_34(self.fake_B), True)
-            self.loss_G_B = 0.5 * self.loss_G_B + 0.2 * self.criterionGAN(self.netD_B_pixel(self.fake_A), True) \
-                            + 0.3 * self.criterionGAN(self.netD_A_34(self.fake_A), True)
 
         # Forward cycle loss || G_B(G_A(A)) - A||
         self.loss_cycle_A = self.criterionCycle(self.rec_A, self.real_A) * lambda_A
