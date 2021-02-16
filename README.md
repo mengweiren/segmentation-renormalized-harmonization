@@ -2,11 +2,10 @@
 
 An anatomically-regularized un-paired image-to-image translation framework built on CycleGAN (https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix).
 
-![pipeline](pipeline.png)
+![harmonization example on OCT](example.png)
 ## Environment
 ```shell script
-conda create --name srn python=3.7
-pip install -r requirements.txt
+conda create -f environment.yml
 ```
 
 ## Prepare the data
@@ -15,11 +14,11 @@ To speed up data loading for medical images which are typically 3D in Nifti/Nrrd
 ## Training
 Use the script below to start training a translation model, where the naming convention of parameters follows the original CycleGAN implementation. See 'configs/' for parameters definition.
 
-Of note, "--joint_seg | --spade | --sem_dropout" are used to specify different models:
+Of note, "--joint_seg | --srenorm | --sem_dropout" are used to specify different models:
 - If none of them is specified, [CycleGAN](https://arxiv.org/abs/1703.10593) is used;
 - Specify --joint_seg to use [S-CycleGAN](https://openaccess.thecvf.com/content_cvpr_2018/papers/Zhang_Translating_and_Segmenting_CVPR_2018_paper.pdf)  (2D version) ;
 - Specify --joint_seg and --sem_dropout to use [SemGAN](https://arxiv.org/abs/1807.04409);
-- Specify --joint_seg and --spade to use proposed model. 
+- Specify --joint_seg and --srenorm to use proposed model. 
 ```shell script
 python mains/train.py --name 'seg_renorm_cyclegan'\
       --model 'cycle_gan_2d'\
@@ -51,5 +50,5 @@ python mains/train.py --name 'seg_renorm_cyclegan'\
       --niter 20\
       --niter_decay 300 \
       --joint_seg\
-      --spade\
+      --srenorm\
 ```
