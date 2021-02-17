@@ -1,9 +1,17 @@
-# Segmentation renormalized harmonization 
+# Segmentation-Renormalized Unpaired Image Harmonization 
 
-An anatomically-regularized un-paired image-to-image translation framework built on CycleGAN (https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix).
+Reference implementation of "*Segmentation-Renormalized Deep Feature Modulation for Unpaired Image Harmonization*" by M. Ren, et al. to appear in IEEE Transactions on Medical Imaging, 2021.
+
+By incorporating semantic masks (e.g., dense segmentation, anomaly masks, etc.) into image translation via conditional renormalization, improved translation performance and perturbation robustness is achieved.
+
+This repository is built upon the original CycleGAN implementation available [here](https://github.com/junyanz/pytorch-CycleGAN-and-pix2pix).
 
 ![harmonization example on OCT](example.png)
-## Environment
+
+## Dependencies
+
+This implementation requires a Linux OS with all python dependencies available in `environment.yml`. To install all dependencies,
+
 ```shell script
 conda create -f environment.yml
 ```
@@ -14,7 +22,7 @@ To speed up data loading for medical images which are typically 3D in Nifti/Nrrd
 ## Training
 Use the script below to start training a translation model, where the naming convention of parameters follows the original CycleGAN implementation. See 'configs/' for parameters definition.
 
-Of note, "--joint_seg | --srenorm | --sem_dropout" are used to specify different models:
+Of note, "--joint_seg | --srenorm | --sem_dropout" are used to specify different models compared in the paper:
 - If none of them is specified, [CycleGAN](https://arxiv.org/abs/1703.10593) is used;
 - Specify --joint_seg to use [S-CycleGAN](https://openaccess.thecvf.com/content_cvpr_2018/papers/Zhang_Translating_and_Segmenting_CVPR_2018_paper.pdf)  (2D version) ;
 - Specify --joint_seg and --sem_dropout to use [SemGAN](https://arxiv.org/abs/1807.04409);
@@ -51,4 +59,17 @@ python mains/train.py --name 'seg_renorm_cyclegan'\
       --niter_decay 300 \
       --joint_seg\
       --srenorm\
+```
+
+## Citation
+If you use this code, please consider citing our work:
+```
+@misc{ren2021segmentationrenormalized,
+      title={Segmentation-Renormalized Deep Feature Modulation for Unpaired Image Harmonization}, 
+      author={Mengwei Ren and Neel Dey and James Fishbaugh and Guido Gerig},
+      year={2021},
+      eprint={2102.06315},
+      archivePrefix={arXiv},
+      primaryClass={eess.IV}
+}
 ```
