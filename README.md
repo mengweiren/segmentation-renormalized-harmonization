@@ -13,7 +13,7 @@ This repository is built upon the original CycleGAN implementation available [he
 This implementation requires a Linux OS with all python dependencies available in `environment.yml`. To install all dependencies,
 
 ```shell script
-conda create -f environment.yml
+conda create env -f environment.yml
 ```
 
 ## Prepare the data
