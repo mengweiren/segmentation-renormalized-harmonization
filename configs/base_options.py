@@ -39,7 +39,6 @@ class BaseOptions():
         parser.add_argument('--typeG', type=str, default='unet',
                             help='specify generator architecture [unet | resunet ]')
         parser.add_argument('--n_layers_D', type=int, default=4, help='only used if netD==n_layers')
-        parser.add_argument('--multiscaleD', type=int, default=1, help='if greater than 1, use multi-scale discriminator')
         parser.add_argument('--norm', type=str, default='instance',
                             help='instance normalization or batch normalization [instance | batch | none]')
         parser.add_argument('--init_type', type=str, default='normal',
@@ -87,7 +86,6 @@ class BaseOptions():
         parser.add_argument('--load_step', type=int, default=0, help='continue training: the step to continue from')
         parser.add_argument('--sem_dropout', action='store_true', help='semantic dropout or not')
         parser.add_argument('--seg_nc', type=int, default=4, help='number of semantic class')
-        parser.add_argument('--noise_std', type=float, default=0.01, help='standard deviation of Gaussian noise')
         parser.add_argument('--fold', type=float, default=0, help='fold id for LOOCV')
         parser.add_argument('--mask', action='store_true',help='add mask for brain')
 
