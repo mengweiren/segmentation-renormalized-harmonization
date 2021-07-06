@@ -64,12 +64,11 @@ python mains/train.py --name 'seg_renorm_cyclegan'\
 ## Citation
 If you use this code, please consider citing our work:
 ```
-@misc{ren2021segmentationrenormalized,
-      title={Segmentation-Renormalized Deep Feature Modulation for Unpaired Image Harmonization}, 
-      author={Mengwei Ren and Neel Dey and James Fishbaugh and Guido Gerig},
-      year={2021},
-      eprint={2102.06315},
-      archivePrefix={arXiv},
-      primaryClass={eess.IV}
+@article{ren2021segmentation,
+  title={Segmentation-Renormalized Deep Feature Modulation for Unpaired Image Harmonization},
+  author={Ren, Mengwei and Dey, Neel and Fishbaugh, James and Gerig, Guido},
+  journal={IEEE Transactions on Medical Imaging},
+  year={2021},
+  publisher={IEEE}
 }
 ```
