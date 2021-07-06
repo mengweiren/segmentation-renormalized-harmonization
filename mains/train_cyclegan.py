@@ -1,10 +1,8 @@
 import os, sys
 
 sys.path.append('../')
-from data.retouch_loader import h5RETOUCH
-from data.ixi_loader import h5IXI
-from data.msseg_loader import msseg, msseg_test, msseg_k_fold, msseg_k_fold_test
-from data.msseg_h5 import scanner1, scanner2, scanner3, crop_ranges
+from data.example_loader import h5lodaer
+
 from configs.train_options import TrainOptions
 
 import torch
@@ -37,71 +35,14 @@ if __name__ == '__main__':
 
     assert slice_num == opt.input_nc
 
-    if dataset == 'retouch':
-        train_dataset = h5RETOUCH('../datasets/retouch/train.h5', slice_num=slice_num, crop_size=opt.crop_size,
-                                  match=True)
-        test_dataset = h5RETOUCH('../datasets/retouch/val.h5', slice_num=slice_num, crop_size=opt.crop_size)
-
-    elif dataset == 'ixi':
-        train_dataset = h5IXI('../datasets/ixi/train_ne.h5', slice_num=slice_num, crop_size=opt.crop_size,
-                              prob_seg=False)
-        test_dataset = h5IXI('../datasets/ixi/val_ne.h5', slice_num=slice_num, crop_size=opt.crop_size,
-                             prob_seg=False, is_train=False)
-        #labels_dict = ['BG', 'CSF', 'Grey matter', 'White matter']
-        pad_x, pad_y = 256, 256
-        crop_range = None
-
-
-    elif dataset == 'msseg':
-        # scanner1: '01' , scanner2: '07', scanner3: '08'
-        scanner_set = {'01': scanner1, '07': scanner2, '08': scanner3}
-        src_scan = scanner_set[opt.name.split('/')[-1][:2]]
-        trg_scan = scanner_set[opt.name.split('/')[-1][2:]]
-        print(src_scan, trg_scan)
-        mni = True
-        pad_x, pad_y = 256, 256
-        '''LOOCV'''
-        fold_k = int(opt.fold)
-        # print(fold_k)
-        summarypath = os.path.join(opt.checkpoints_dir, opt.name + '/fold_%d' % fold_k)
-        print(summarypath)
-        if not os.path.exists(summarypath):
-            mkdirs(summarypath)
-        folder = '../datasets/mni_msseg_all/'
-        train_dataset = msseg_k_fold(folder, src=src_scan, trg=trg_scan, is_train=True, crop_size=opt.crop_size,
-                                     resize=None, mni=True, fold=fold_k, normalize='cross_max',
-                                     augment='random_crop')
-        val_dataset = msseg_k_fold(folder, src=src_scan, trg=trg_scan, is_train=False, crop_size=opt.crop_size,
-                                   resize=None, mni=True, fold=fold_k, normalize='cross_max', augment='random_crop')
-        test_dataset = msseg_k_fold_test(folder, src_scan, trg_scan, is_target=False, resize=None, fold=fold_k,
-                                         normalize='cross_max')
-        with open(os.path.join(summarypath, 'train_%s_fold_%d.txt' % (src_scan['prefix'], fold_k)), 'w') as f:
-            f.writelines("%s\n" % s for s in train_dataset.src_sub_list)
-        with open(os.path.join(summarypath, 'val_%s_fold_%d.txt' % (src_scan['prefix'], fold_k)), 'w') as f:
-            f.writelines("%s\n" % s for s in val_dataset.src_sub_list)
-        with open(os.path.join(summarypath, 'train_%s_fold_%d.txt' % (trg_scan['prefix'], fold_k)), 'w') as f:
-            f.writelines("%s\n" % s for s in train_dataset.trg_sub_list)
-        with open(os.path.join(summarypath, 'val_%s_fold_%d.txt' % (src_scan['prefix'], fold_k)), 'w') as f:
-            f.writelines("%s\n" % s for s in val_dataset.trg_sub_list)
-
-        #labels_dict = ['BG', 'Lesion']
-        # pad_x, pad_y = 512, 128
-        crop_range = None
-
-
-    else:
-        raise NotImplementedError
+    train_dataset = h5lodaer('../datasets/train.h5', crop_size=opt.crop_size, src_key='scanner1', trg_key='scanner2')
     shutil.copy('../scripts/train_cyclegan.sh',
                 os.path.join(summarypath, 'train_cyclegan.sh'))  # copy config file to output folder
     print('Training set: %d' % (train_dataset.__len__()))
-    print('Validation set: %d' % (test_dataset.__len__()))
     data_loader_train = torch.utils.data.DataLoader(dataset=train_dataset,
                                                     batch_size=opt.batch_size, shuffle=True,
                                                     num_workers=4,
                                                     pin_memory=True)
-    data_loader_test = torch.utils.data.DataLoader(dataset=test_dataset,
-                                                   batch_size=1, shuffle=False,
-                                                   num_workers=2)
     model = CycleGAN(opt)
     model.save_dir = summarypath
 
@@ -123,7 +64,6 @@ if __name__ == '__main__':
             if opt.sem_dropout:
                 data['A'], data['A_seg'], data['B'], data['B_seg'] = SM(data['A'], data['A_seg'], data['B'],
                                                                         data['B_seg'])
-            # data['B'], data['B_seg'] = SM(data['B'], data['B_seg'])
             model.set_input(data)
             print(data['A'].min(), data['A'].max(), data['B'].min(), data['B'].max())
             step = iteration + (epoch - 1) * len(data_loader_train)
