@@ -11,7 +11,7 @@ from data.augmentation import RandomCrop, Compose, one_hot
 
 
 
-class h5lodaer(torch.utils.data.Dataset):
+class h5loader(torch.utils.data.Dataset):
     def __init__(self, is_train, src_key, trg_key, crop_size):
         if is_train and augment:
             self.augment = Compose([
@@ -34,7 +34,7 @@ class h5lodaer(torch.utils.data.Dataset):
             src_img, src_seg = hf[self.src_key]['img'][item], hf[self.trg_key]['seg'][item]
 
             item = np.random.randint(0, self.trg_num)
-            trg_img, trg_seg = hf['spectralis']['img'][item], hf['spectralis']['seg'][item]
+            trg_img, trg_seg = hf[self.trg_key]['img'][item], hf[self.trg_key]['seg'][item]
 
         xs = np.zeros((1,
                        self.crop_size,
